@@ -9,10 +9,12 @@ function fakeLiveApi(failDraft = false) {
   return vi.fn<typeof fetch>().mockImplementation(async (input, options) => {
     const url = new URL(String(input));
     const method = options?.method || "GET";
+    if (url.pathname === "/api/photos/describe") return Response.json({ suggestions: { title: "Pale vessel", material: "Possibly ceramic", observed: "A pale vessel with a curved handle.", alt: "A pale handled vessel" } });
     if (url.searchParams.get("view") === "curator" && !new Headers(options?.headers).has("x-curator-code")) return new Response(null, { status: 401 });
     if (method === "GET") return Response.json({ mode: "live", artifacts: artifact?.stage === "exhibited" ? [artifact] : [] });
     if (method === "POST") {
       artifact = createArtifact(intakeSchema.parse(JSON.parse(String(options?.body))), "test-acceptance-object");
+      if (artifact.photo) artifact.photo = { ...artifact.photo, url: `https://cdn.sanity.io/images/project/production/${"a".repeat(40)}-20x20.webp`, assetId: `image-${"a".repeat(40)}-20x20-webp` };
       return Response.json({ artifact }, { status: 201 });
     }
     const operation = operationSchema.parse(JSON.parse(String(options?.body)));
@@ -24,6 +26,13 @@ function fakeLiveApi(failDraft = false) {
 }
 
 describe("live workflow acceptance gate", () => {
+  it("verifies photo suggestions, stored image references, and image preservation", async () => {
+    const cleanup = vi.fn().mockResolvedValue(undefined);
+    const result = await verifyLiveWorkflow("http://localhost:3002", "test-only-code", { nonce: "photo-run", photo: { dataUrl: "data:image/png;base64,AA==", alt: "A pale handled vessel", consent: true }, fetcher: fakeLiveApi(), cleanup });
+    expect(result.photoSuggestionsReceived).toBe(true);
+    expect(result.photoPreserved).toBe(true);
+    expect(cleanup).toHaveBeenCalledOnce();
+  });
   it("exercises the full workflow and cleans its temporary record", async () => {
     const cleanup = vi.fn().mockResolvedValue(undefined);
     const result = await verifyLiveWorkflow("http://localhost:3002", "test-only-code", { nonce: "test-run", fetcher: fakeLiveApi(), cleanup });

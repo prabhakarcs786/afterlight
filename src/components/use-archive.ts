@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useState } from "react";
 import { z } from "zod";
-import { applyOperation, artifactSchema, createArtifact, type Artifact, type Intake, type Operation } from "@/lib/domain";
+import { applyOperation, artifactSchema, createArtifact, photoDescriptionSchema, type Artifact, type Intake, type Operation, type PhotoDescription } from "@/lib/domain";
 import { prepareLocalDraft } from "@/lib/fixtures";
 import { decodeSnapshot, encodeSnapshot, storageKey } from "@/lib/demo-store";
 
@@ -95,7 +95,7 @@ export function useArchive(mode: "demo" | "live", initialArtifacts: Artifact[], 
         created = createArtifact(input, crypto.randomUUID());
         const next = [...latest, created]; localStorage.setItem(storageKey, encodeSnapshot(next)); setArtifacts(next);
       } else {
-        const response = await fetch("/api/artifacts", { method: "POST", headers: { "Content-Type": "application/json", "x-curator-code": curatorCode }, body: JSON.stringify(input), signal: AbortSignal.timeout(15_000) });
+        const response = await fetch("/api/artifacts", { method: "POST", headers: { "Content-Type": "application/json", "x-curator-code": curatorCode }, body: JSON.stringify(input), signal: AbortSignal.timeout(30_000) });
         const data = await response.json();
         if (!response.ok) throw new Error(data.title || "Object intake failed.");
         created = artifactSchema.parse(data.artifact); setArtifacts((previous) => [...previous, created]);
@@ -110,5 +110,17 @@ export function useArchive(mode: "demo" | "live", initialArtifacts: Artifact[], 
     catch { setError("Browser storage is unavailable. Enable local storage to edit the demo."); }
   }
 
-  return { artifacts, error, notice, ready, pending, connection, unlocked: mode === "demo" || Boolean(curatorCode), operation, add, unlock, resetDemo };
+  async function suggestPhoto(dataUrl: string): Promise<PhotoDescription | null> {
+    setPending(true); setError("");
+    try {
+      if (mode !== "live") throw new Error("Photo suggestions require live Gemini access.");
+      const response = await fetch("/api/photos/describe", { method: "POST", headers: { "Content-Type": "application/json", "x-curator-code": curatorCode }, body: JSON.stringify({ dataUrl, consent: true }), signal: AbortSignal.timeout(40_000) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.title || "Photo description failed.");
+      return photoDescriptionSchema.parse(data.suggestions);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Photo description failed."); return null; }
+    finally { setPending(false); }
+  }
+
+  return { artifacts, error, notice, ready, pending, connection, unlocked: mode === "demo" || Boolean(curatorCode), operation, add, unlock, resetDemo, suggestPhoto };
 }

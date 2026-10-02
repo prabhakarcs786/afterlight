@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { artifactSchema, type Artifact, type Intake, type Operation } from "./domain";
+import { artifactSchema, photoDescriptionSchema, type Artifact, type Intake, type Operation } from "./domain";
 import { applicationOrigin } from "./readiness";
 
 const archiveSchema = z.object({ mode: z.literal("live"), artifacts: z.array(artifactSchema) });
@@ -7,6 +7,7 @@ const changeSchema = z.object({ artifact: artifactSchema, drafting: z.literal("m
 
 export async function verifyLiveWorkflow(url: string, accessCode: string, options: {
   nonce: string;
+  photo?: Intake["photo"];
   cleanup: (id: string | undefined, input: Intake) => Promise<void>;
   fetcher?: typeof fetch;
 }) {
@@ -32,13 +33,20 @@ export async function verifyLiveWorkflow(url: string, accessCode: string, option
   }
 
   await publicRecords();
-  const input: Intake = { title: `Live acceptance ${options.nonce}`, kind: "cup", collectionId: "collection-rituals", material: "Test ceramic", observed: `Temporary acceptance-check object ${options.nonce}; not part of the permanent museum collection.` };
+  const input: Intake = { title: `Live acceptance ${options.nonce}`, kind: options.photo ? "photo" : "cup", collectionId: "collection-rituals", material: "Test ceramic", observed: `Temporary acceptance-check object ${options.nonce}; not part of the permanent museum collection.`, ...(options.photo ? { photo: options.photo } : {}) };
   let id: string | undefined;
   try {
-    const created = await fetcher(`${origin}/api/artifacts`, { method: "POST", headers, body: JSON.stringify(input), redirect: "error", signal: AbortSignal.timeout(15_000) });
+    if (options.photo) {
+      const described = await fetcher(`${origin}/api/photos/describe`, { method: "POST", headers, body: JSON.stringify({ dataUrl: options.photo.dataUrl, consent: true }), redirect: "error", signal: AbortSignal.timeout(40_000) });
+      if (!described.ok) throw new Error(`Live photo description failed with HTTP ${described.status}.`);
+      photoDescriptionSchema.parse((await described.json()).suggestions);
+    }
+    const created = await fetcher(`${origin}/api/artifacts`, { method: "POST", headers, body: JSON.stringify(input), redirect: "error", signal: AbortSignal.timeout(30_000) });
     if (created.status !== 201) throw new Error(`Live intake failed with HTTP ${created.status}.`);
     let current = changeSchema.parse(await created.json()).artifact;
     id = current._id;
+    const savedPhoto = current.photo;
+    if (options.photo && (!savedPhoto?.assetId || !savedPhoto.url.startsWith("https://cdn.sanity.io/images/"))) throw new Error("The photo was not saved as a Sanity image asset.");
     if (current.stage !== "intake" || (await publicRecords()).some((artifact) => artifact._id === id)) throw new Error("An intake object became public before approval.");
     current = await update(current, { action: "prepare", expectedRevision: current._rev });
     if (current.stage !== "draft" || current.observed !== input.observed || current.material !== input.material) throw new Error("Draft generation changed the object's observed facts or workflow stage incorrectly.");
@@ -52,7 +60,8 @@ export async function verifyLiveWorkflow(url: string, accessCode: string, option
     if (current.stage !== "exhibited" || !(await publicRecords()).some((artifact) => artifact._id === id)) throw new Error("Approval did not publish the object to the public collection.");
     current = await update(current, { action: "revise", expectedRevision: current._rev, note: "Live acceptance check complete; withdraw this temporary object." });
     if (current.stage !== "draft" || (await publicRecords()).some((artifact) => artifact._id === id)) throw new Error("Withdrawal did not remove the object from the public collection.");
-    return { artifactId: id, transitions: ["intake", "draft", "review", "exhibited", "draft"], staleWriteRejected: true, observedFactsPreserved: true };
+    if (options.photo && JSON.stringify(current.photo) !== JSON.stringify(savedPhoto)) throw new Error("The workflow changed the saved photo.");
+    return { artifactId: id, transitions: ["intake", "draft", "review", "exhibited", "draft"], staleWriteRejected: true, observedFactsPreserved: true, ...(options.photo ? { photoSuggestionsReceived: true, photoPreserved: true } : {}) };
   } finally {
     await options.cleanup(id, input);
   }

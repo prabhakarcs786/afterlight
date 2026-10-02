@@ -1,12 +1,14 @@
 import "server-only";
 import { createClient } from "@sanity/client";
+import { createImageUrlBuilder } from "@sanity/image-url";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { applyOperation, artifactSchema, createArtifact, WorkflowError, type Artifact, type Intake, type Operation } from "./domain";
 import { prepareDraft } from "./generation";
 import { HttpError } from "./http";
+import { normalizePhoto } from "./photos";
 
-export type ArtifactDocument = Omit<Artifact, "collectionId"> & { _type: "artifact"; collection: { _type: "reference"; _ref: Artifact["collectionId"] } };
+export type ArtifactDocument = Omit<Artifact, "collectionId" | "photo"> & { _type: "artifact"; collection: { _type: "reference"; _ref: Artifact["collectionId"] }; photo?: { _type: "image"; asset: { _type: "reference"; _ref: string }; alt: string } | null };
 
 export function sanityClient(write = false) {
   const projectId = process.env.SANITY_STUDIO_PROJECT_ID;
@@ -15,7 +17,7 @@ export function sanityClient(write = false) {
   return createClient({ projectId, dataset: process.env.SANITY_STUDIO_DATASET || "production", apiVersion: "2026-09-01", useCdn: false, token, perspective: "published", timeout: 10_000, maxRetries: 1 });
 }
 
-export const artifactProjection = `{_id, _rev, _updatedAt, title, kind, "collectionId": collection._ref, accession, material, observed, interpretation, label, strangeness, stage, history}`;
+export const artifactProjection = `{_id, _rev, _updatedAt, title, kind, "collectionId": collection._ref, accession, material, observed, interpretation, label, strangeness, stage, history, "photo": select(defined(photo.asset) => {"assetId": photo.asset._ref, "url": photo.asset->url, "alt": photo.alt}, null)}`;
 
 export async function listArtifacts(curator = false): Promise<Artifact[]> {
   const result = await sanityClient().fetch(`*[_type == "artifact" && !(_id in path("drafts.**")) && ($curator || stage == "exhibited")] | order(accession asc)[0...100]${artifactProjection}`, { curator }, { signal: AbortSignal.timeout(10_000) });
@@ -23,13 +25,21 @@ export async function listArtifacts(curator = false): Promise<Artifact[]> {
 }
 
 function fromDocument(document: ArtifactDocument): Artifact {
-  return artifactSchema.parse({ ...document, collectionId: document.collection?._ref });
+  const photo = document.photo?.asset ? { assetId: document.photo.asset._ref, alt: document.photo.alt, url: createImageUrlBuilder({ projectId: process.env.SANITY_STUDIO_PROJECT_ID!, dataset: process.env.SANITY_STUDIO_DATASET || "production" }).image(document.photo).url() } : null;
+  return artifactSchema.parse({ ...document, collectionId: document.collection?._ref, photo });
 }
 
 export async function insertArtifact(input: Intake): Promise<Artifact> {
   const artifact = createArtifact(input, randomUUID());
-  const fields = artifactSchema.omit({ _rev: true, _updatedAt: true, collectionId: true }).parse(artifact);
-  const saved = await sanityClient(true).create<Omit<ArtifactDocument, "_rev" | "_updatedAt">>({ ...fields, _type: "artifact", collection: { _type: "reference", _ref: artifact.collectionId } });
+  const client = sanityClient(true);
+  let photo: ArtifactDocument["photo"] = null;
+  if (input.photo) {
+    const bytes = await normalizePhoto(input.photo.dataUrl);
+    const asset = await client.assets.upload("image", bytes, { contentType: "image/webp", filename: "afterlight-photo.webp" });
+    photo = { _type: "image", asset: { _type: "reference", _ref: asset._id }, alt: input.photo.alt };
+  }
+  const fields = artifactSchema.omit({ _rev: true, _updatedAt: true, collectionId: true, photo: true }).parse(artifact);
+  const saved = await client.create<Omit<ArtifactDocument, "_rev" | "_updatedAt">>({ ...fields, photo, _type: "artifact", collection: { _type: "reference", _ref: artifact.collectionId } });
   return fromDocument(saved);
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyOperation, artifactMarkdown, createArtifact, publicCollection, type Artifact, type Operation } from "./domain";
+import { applyOperation, artifactMarkdown, createArtifact, intakeSchema, photoSchema, publicCollection, type Artifact, type Operation } from "./domain";
 import { prepareLocalDraft, seedArtifacts } from "./fixtures";
 
 const at = "2026-09-30T14:00:00.000Z";
@@ -51,6 +51,24 @@ describe("curation workflow", () => {
     expect(created.stage).toBe("intake");
     expect(created._id).toBe("artifact-new-object");
     expect(created.label).toBe("");
+  });
+  it("keeps photo exhibits in intake and preserves the photo through approval", () => {
+    const photo = { dataUrl: "data:image/png;base64,AA==", alt: "A ceramic vessel with a handle", consent: true as const };
+    const created = createArtifact({ title: "A personal keepsake", kind: "photo", collectionId: "collection-rituals", material: "Glazed ceramic", observed: "A glazed vessel with a curved handle and a round opening.", photo }, "uploaded-photo", at);
+    expect(publicCollection([created])).toEqual([]);
+    const draft = advance(created, "prepare", "photo-draft");
+    const review = advance(draft, "submit", "photo-review");
+    const exhibited = advance(review, "approve", "photo-approved");
+    expect(exhibited.photo).toEqual({ url: photo.dataUrl, alt: photo.alt });
+    expect(exhibited.observed).toBe(created.observed);
+    expect(publicCollection([exhibited])).toEqual([exhibited]);
+  });
+  it("rejects missing photos, missing consent, and unsafe photo locations", () => {
+    const input = { title: "A personal keepsake", kind: "photo", collectionId: "collection-rituals", material: "Ceramic", observed: "A glazed vessel with a handle." };
+    expect(intakeSchema.safeParse(input).success).toBe(false);
+    expect(intakeSchema.safeParse({ ...input, photo: { dataUrl: "data:image/png;base64,AA==", alt: "A ceramic vessel" } }).success).toBe(false);
+    expect(photoSchema.safeParse({ url: "https://untrusted.example/photo.png", alt: "A ceramic vessel" }).success).toBe(false);
+    expect(photoSchema.safeParse({ url: "data:image/svg+xml;base64,AA==", alt: "A ceramic vessel" }).success).toBe(false);
   });
   it("exports an explicitly fictional provenance record", () => {
     const output = artifactMarkdown(seedArtifacts[0]);

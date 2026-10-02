@@ -1,5 +1,5 @@
 import { defineArrayMember, defineField, defineType } from "sanity";
-import { objectKinds, stages } from "../src/lib/domain";
+import { artifactKinds, stages } from "../src/lib/domain";
 
 export const schemaTypes = [
   defineType({ name: "collection", title: "Collection", type: "document", fields: [
@@ -13,7 +13,8 @@ export const schemaTypes = [
     { name: "workflow", title: "Workflow & provenance" },
   ], fields: [
     defineField({ name: "title", type: "string", group: "observed", validation: (rule) => rule.required().min(3).max(90) }),
-    defineField({ name: "kind", type: "string", group: "observed", options: { list: [...objectKinds] }, validation: (rule) => rule.required() }),
+    defineField({ name: "kind", type: "string", group: "observed", options: { list: [...artifactKinds] }, validation: (rule) => rule.required() }),
+    defineField({ name: "photo", title: "Uploaded object photo", type: "image", group: "observed", hidden: ({ document }) => document?.kind !== "photo", readOnly: ({ document }) => document?.stage !== "intake", fields: [defineField({ name: "alt", title: "Photo description", type: "string", validation: (rule) => rule.required().min(3).max(300) })], validation: (rule) => rule.custom((value, context) => context.document?.kind === "photo" && !value?.asset ? "A photo exhibit needs an image." : true) }),
     defineField({ name: "collection", type: "reference", group: "observed", to: [{ type: "collection" }], validation: (rule) => rule.required() }),
     defineField({ name: "accession", type: "string", group: "observed", readOnly: true, validation: (rule) => rule.required() }),
     defineField({ name: "material", type: "string", group: "observed", validation: (rule) => rule.required().min(2).max(100) }),

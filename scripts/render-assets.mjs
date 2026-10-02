@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { chromium } from "@playwright/test";
 
 const baseUrl = process.env.ASSET_BASE_URL || "http://127.0.0.1:3002";
@@ -18,7 +18,9 @@ try {
       context.readPixels(0, 0, context.drawingBufferWidth, context.drawingBufferHeight, context.RGBA, context.UNSIGNED_BYTE, pixels);
       return pixels.some((value, index) => index % 4 === 3 && value > 0);
     });
-    await page.locator("canvas").screenshot({ path: `public/objects/${kind}.png`, omitBackground: true });
+    // Export canvas pixels directly so browser overlays cannot enter the artwork.
+    const dataUrl = await page.locator("canvas").evaluate((canvas) => canvas.toDataURL("image/png"));
+    await writeFile(`public/objects/${kind}.png`, Buffer.from(dataUrl.split(",")[1], "base64"));
     console.log(`Rendered original asset: ${kind}.png`);
   }
 } finally { await browser.close(); }

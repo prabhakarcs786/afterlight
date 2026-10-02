@@ -1,0 +1,29 @@
+Afterlight — submission walkthrough
+English neural voice: Microsoft Ava Multilingual
+
+0:00 — A museum from 2126
+Meet Afterlight, a museum from twenty-one twenty-six. Ordinary objects become strange little stories, with Sanity holding the collection and a human curator deciding what goes on display.
+
+0:12 — Observation and fiction
+Start with a cassette. Rotate the original three-dimensional model, then compare what we can see with its possible story. Observation and imagination stay separate.
+
+0:23 — Bring your own object
+The curator can also upload an image. Here, we're using a render of our own cup as the sample upload. It stays an image, never a pretend three-dimensional reconstruction.
+
+0:35 — Suggestions need your approval
+With consent, Gemini suggests a title, material, and visible details. These are marked unverified. They only enter the form when the curator chooses to use them.
+
+0:46 — AI drafts; people decide
+After saving the object to Sanity, we ask A I for a fictional interpretation. We can edit the exhibition label before saving. Drafting cannot approve the object or change its observed details.
+
+0:59 — A human final say
+Now we submit the draft for review. Approval is a separate curator action. Only then does the object become part of the public collection.
+
+1:08 — The decisions stay with the object
+Visitors can inspect the image and its story, then follow the recorded journey from intake through drafting and approval. Those decisions live beside the content in Sanity.
+
+1:18 — Withdrawal is part of the workflow
+Need another review? Give a reason and return the exhibit to draft. It leaves the public gallery, while the decision history is retained.
+
+1:27 — Try Afterlight
+Explore the collection without signing in. Judges can use curator access to try the full workflow. Afterlight. Small things, long afterlives, and a human final say.

@@ -1,6 +1,15 @@
 import { z } from "zod";
 
 export const objectKinds = ["cassette", "key", "disk", "bulb", "phone", "cup", "disc", "battery"] as const;
+export type ObjectKind = typeof objectKinds[number];
+export const artifactKinds = [...objectKinds, "photo"] as const;
+export const maxPhotoBytes = 2 * 1024 * 1024;
+export const photoDataSchema = z.string().max(Math.ceil(maxPhotoBytes / 3) * 4 + 64).regex(/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/, "Choose a JPEG, PNG, or WebP photo.");
+export const photoSchema = z.object({
+  url: z.union([photoDataSchema, z.url().max(2048).refine((value) => { const url = new URL(value); return url.protocol === "https:" && url.hostname === "cdn.sanity.io" && url.pathname.startsWith("/images/") && !url.username && !url.password; }, "Invalid photo location.")]),
+  alt: z.string().trim().min(3).max(300),
+  assetId: z.string().regex(/^image-[a-f0-9]+-\d+x\d+-[a-z0-9]+$/).optional(),
+});
 export const stages = ["intake", "draft", "review", "exhibited"] as const;
 export const collections = [
   { _id: "collection-signals", title: "Signals & silence", description: "Objects that once carried a voice.", color: "#cce5e6" },
@@ -23,7 +32,8 @@ export const artifactSchema = z.object({
   _rev: z.string().min(1).max(200),
   _updatedAt: z.iso.datetime(),
   title: z.string().trim().min(3).max(90),
-  kind: z.enum(objectKinds),
+  kind: z.enum(artifactKinds),
+  photo: photoSchema.nullish(),
   collectionId: z.enum(["collection-signals", "collection-rituals", "collection-energy"]),
   accession: z.string().min(1).max(30),
   material: z.string().trim().min(2).max(100),
@@ -36,7 +46,13 @@ export const artifactSchema = z.object({
 });
 
 export const draftSchema = artifactSchema.pick({ label: true, interpretation: true, strangeness: true });
-export const intakeSchema = artifactSchema.pick({ title: true, kind: true, collectionId: true, material: true, observed: true });
+export const photoDescriptionSchema = artifactSchema.pick({ title: true, material: true, observed: true }).extend({ alt: z.string().trim().min(3).max(300) });
+export const intakeSchema = artifactSchema.pick({ title: true, kind: true, collectionId: true, material: true, observed: true }).extend({
+  photo: z.object({ dataUrl: photoDataSchema, alt: z.string().trim().min(3).max(300), consent: z.literal(true) }).optional(),
+}).superRefine((value, context) => {
+  if (value.kind === "photo" && !value.photo) context.addIssue({ code: "custom", path: ["photo"], message: "Add a photo and confirm permission before saving." });
+  if (value.kind !== "photo" && value.photo) context.addIssue({ code: "custom", path: ["kind"], message: "Uploaded photos must use the photo exhibit type." });
+});
 export const operationSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("prepare"), expectedRevision: z.string().min(1).max(200) }),
   z.object({ action: z.literal("save"), expectedRevision: z.string().min(1).max(200), draft: draftSchema }),
@@ -48,6 +64,7 @@ export const operationSchema = z.discriminatedUnion("action", [
 export type Artifact = z.infer<typeof artifactSchema>;
 export type Draft = z.infer<typeof draftSchema>;
 export type Intake = z.infer<typeof intakeSchema>;
+export type PhotoDescription = z.infer<typeof photoDescriptionSchema>;
 export type Operation = z.infer<typeof operationSchema>;
 export type Stage = Artifact["stage"];
 export type Actor = "automation" | "curator";
@@ -58,7 +75,7 @@ export class WorkflowError extends Error {
 
 export function createArtifact(input: Intake, id: string, now = new Date().toISOString()): Artifact {
   const intake = intakeSchema.parse(input);
-  return artifactSchema.parse({ ...intake, _id: `artifact-${id}`, _rev: `intake-${id}`, _updatedAt: now, accession: `A-${id.slice(0, 8).toUpperCase()}`, interpretation: "", label: "", strangeness: 3, stage: "intake", history: [{ _key: id, action: "intake", actor: "curator", from: "intake", to: "intake", at: now, note: "Entered the fictional archive." }] });
+  return artifactSchema.parse({ ...intake, photo: intake.photo ? { url: intake.photo.dataUrl, alt: intake.photo.alt } : null, _id: `artifact-${id}`, _rev: `intake-${id}`, _updatedAt: now, accession: `A-${id.slice(0, 8).toUpperCase()}`, interpretation: "", label: "", strangeness: 3, stage: "intake", history: [{ _key: id, action: "intake", actor: "curator", from: "intake", to: "intake", at: now, note: "Entered the fictional archive." }] });
 }
 
 export function applyOperation(currentInput: Artifact, operationInput: Operation, actor: Actor, context: { eventId: string; at: string; preparedDraft?: Draft }): Artifact {
@@ -117,6 +134,7 @@ export function artifactMarkdown(artifact: Artifact): string {
     `## Observed material\n${artifact.material}\n\n${artifact.observed}`,
     `## Fictional interpretation\n${artifact.interpretation || "Not drafted."}`,
     `## Exhibition label\n${artifact.label || "Not drafted."}`,
+    ...(artifact.photo ? [`## Reference image\n${artifact.photo.alt}`, artifact.photo.assetId ? `Photo: ${artifact.photo.url}` : "The uploaded image is stored in this browser and is not embedded in this text export."] : []),
     "## Workflow history",
     ...artifact.history.map((event) => `- ${event.at}: ${event.actor} / ${event.from} -> ${event.to} / ${event.note}`),
     "The object rendering and interpretation are creative reconstructions, not historical claims.",

@@ -5,9 +5,9 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Maximize, Pause, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
 import { createObject, disposeObject } from "@/lib/objects";
-import { type Artifact } from "@/lib/domain";
+import { type ObjectKind } from "@/lib/domain";
 
-export function ObjectScene({ kind, controls = true, renderMode = false }: { kind: Artifact["kind"]; controls?: boolean; renderMode?: boolean }) {
+export function ObjectScene({ kind, controls = true, renderMode = false }: { kind: ObjectKind; controls?: boolean; renderMode?: boolean }) {
   const container = useRef<HTMLDivElement>(null);
   const orbit = useRef<OrbitControls | null>(null);
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
@@ -28,7 +28,7 @@ export function ObjectScene({ kind, controls = true, renderMode = false }: { kin
     cameraRef.current = camera;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.3;
     renderer.domElement.setAttribute("aria-label", `Interactive three-dimensional reconstruction of a ${kind}`);
     renderer.domElement.setAttribute("role", "img");
@@ -48,12 +48,13 @@ export function ObjectScene({ kind, controls = true, renderMode = false }: { kin
       camera.left = -halfHeight * width / height; camera.right = halfHeight * width / height; camera.top = halfHeight; camera.bottom = -halfHeight; camera.updateProjectionMatrix();
     };
     const observer = new ResizeObserver(resize); observer.observe(host); resize();
-    const clock = new THREE.Clock();
-    renderer.setAnimationLoop(() => { interaction.autoRotate = spin.current; interaction.update(Math.min(clock.getDelta(), .1)); renderer.render(scene, camera); });
+    const timer = new THREE.Timer();
+    timer.connect(document);
+    renderer.setAnimationLoop((timestamp) => { timer.update(timestamp); interaction.autoRotate = spin.current; interaction.update(Math.min(timer.getDelta(), .1)); renderer.render(scene, camera); });
     const contextLost = (event: Event) => { event.preventDefault(); renderer.setAnimationLoop(null); setFailed(true); };
     renderer.domElement.addEventListener("webglcontextlost", contextLost);
     return () => {
-      observer.disconnect(); interaction.dispose(); renderer.setAnimationLoop(null); renderer.domElement.removeEventListener("webglcontextlost", contextLost);
+      observer.disconnect(); interaction.dispose(); renderer.setAnimationLoop(null); timer.dispose(); renderer.domElement.removeEventListener("webglcontextlost", contextLost);
       disposeObject(object); floor.geometry.dispose(); floor.material.dispose(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); orbit.current = null; cameraRef.current = null;
     };
   }, [kind, controls, renderMode]);

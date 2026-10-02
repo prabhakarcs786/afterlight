@@ -1,9 +1,51 @@
 openapi: 3.1.0
 info:
   title: Afterlight Archive API
-  version: 1.0.0
+  version: 1.1.0
   description: Application-owned fictional museum workflow. Live mutations require a curator code and revision precondition. Demo mutations remain in browser storage.
 paths:
+  /api/photos/describe:
+    post:
+      operationId: describeObjectPhoto
+      summary: Suggest unverified catalogue details from a sanitised photo
+      description: Requires live curator access and explicit Gemini consent. Accepts still JPEG, PNG, or WebP images up to 2 MiB and 25 megapixels. Pixels are resized and metadata removed before inference. This operation does not save an artifact or image asset. Maximum five requests per minute per process.
+      security: [{ CuratorCode: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dataUrl, consent]
+              properties:
+                dataUrl: { $ref: '#/components/schemas/PhotoData' }
+                consent: { const: true }
+      responses:
+        '200':
+          description: Unverified suggestions that require curator review
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [suggestions]
+                properties:
+                  suggestions:
+                    type: object
+                    required: [title, material, observed, alt]
+                    properties:
+                      title: { type: string, minLength: 3, maxLength: 90 }
+                      material: { type: string, minLength: 2, maxLength: 100 }
+                      observed: { type: string, minLength: 10, maxLength: 1000 }
+                      alt: { type: string, minLength: 3, maxLength: 300 }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+        '502': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
   /api/artifacts:
     get:
       operationId: listArtifacts
@@ -126,15 +168,41 @@ components:
       name: x-curator-code
       description: Shared app-only curator code, not a Sanity API token. Required for live curator reads and writes.
   schemas:
-    Intake:
+    PhotoData:
+      type: string
+      maxLength: 2796268
+      pattern: '^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$'
+    ObjectDetails:
       type: object
       required: [title, kind, collectionId, material, observed]
       properties:
         title: { type: string, minLength: 3, maxLength: 90 }
-        kind: { type: string, enum: [cassette, key, disk, bulb, phone, cup, disc, battery] }
+        kind: { type: string, enum: [cassette, key, disk, bulb, phone, cup, disc, battery, photo] }
         collectionId: { type: string, enum: [collection-signals, collection-rituals, collection-energy] }
         material: { type: string, minLength: 2, maxLength: 100 }
         observed: { type: string, minLength: 10, maxLength: 1000 }
+    Intake:
+      allOf:
+        - $ref: '#/components/schemas/ObjectDetails'
+        - type: object
+          properties:
+            photo:
+              type: object
+              required: [dataUrl, alt, consent]
+              properties:
+                dataUrl: { $ref: '#/components/schemas/PhotoData' }
+                alt: { type: string, minLength: 3, maxLength: 300 }
+                consent: { const: true }
+          if:
+            properties:
+              kind: { const: photo }
+            required: [kind]
+          then:
+            required: [photo]
+          else:
+            not:
+              required: [photo]
+      description: Photo exhibits require a consented raster image. Saving sanitises and uploads the image as a Sanity asset; original image bytes and metadata are not stored in the artifact. Asset URLs may be accessible before gallery approval.
     Draft:
       type: object
       required: [label, interpretation, strangeness]
@@ -144,11 +212,18 @@ components:
         strangeness: { type: integer, minimum: 1, maximum: 5 }
     Artifact:
       allOf:
-        - $ref: '#/components/schemas/Intake'
+        - $ref: '#/components/schemas/ObjectDetails'
         - $ref: '#/components/schemas/Draft'
         - type: object
           required: [_id, _rev, _updatedAt, accession, stage, history]
           properties:
+            photo:
+              type: [object, 'null']
+              required: [url, alt]
+              properties:
+                url: { type: string, format: uri, description: Sanity CDN URL in live mode; browser-local raster data URL in demo mode. }
+                assetId: { type: string, pattern: '^image-[a-f0-9]+-\d+x\d+-[a-z0-9]+$' }
+                alt: { type: string, minLength: 3, maxLength: 300 }
             _id: { type: string }
             _rev: { type: string }
             _updatedAt: { type: string, format: date-time }

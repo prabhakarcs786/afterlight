@@ -15,6 +15,7 @@
     "sanity:deploy": "sanity deploy",
     "seed": "node --env-file=.env.local --import tsx scripts/seed.ts",
     "check:live": "node --env-file-if-exists=.env.local --import tsx scripts/check-live.ts",
+    "check:photo-ui": "node --env-file-if-exists=.env.local --import tsx scripts/check-photo-ui.ts",
     "doctor": "node --env-file-if-exists=.env.local --import tsx scripts/doctor.ts",
     "setup:live": "bash scripts/setup-live.sh"
   },
@@ -32,6 +33,7 @@
     "@fontsource/dm-serif-display": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@sanity/client": "^8.9.0",
+    "@sanity/image-url": "^2.1.1",
     "ai": "^6.0.297",
     "lucide-react": "^1.49.0",
     "next": "16.3.7",
@@ -39,6 +41,7 @@
     "react-dom": "19.2.8",
     "sanity": "^6.17.0",
     "server-only": "^0.0.1",
+    "sharp": "^0.35.5",
     "styled-components": "^6.5.3",
     "three": "^0.186.1",
     "zod": "^4.6.5"

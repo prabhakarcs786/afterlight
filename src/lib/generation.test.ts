@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({ generate: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("ai", async (importOriginal) => ({ ...await importOriginal<typeof import("ai")>(), generateText: mocks.generate }));
 
-import { prepareDraft } from "./generation";
+import { describePhoto, prepareDraft } from "./generation";
 
 beforeEach(() => { vi.resetAllMocks(); vi.stubEnv("APP_MODE", "live"); vi.stubEnv("GOOGLE_MODEL", ""); });
 afterEach(() => vi.unstubAllEnvs());
@@ -34,6 +34,23 @@ describe("real model drafting", () => {
     mocks.generate.mockResolvedValue({ output: { label: "An imagined vessel for keeping moments.", interpretation: "Speculative fiction: a small archive for otherwise forgotten moments.", strangeness: 3 } });
     await prepareDraft(seedArtifacts[0], new AbortController().signal);
     expect(mocks.generate).toHaveBeenCalledWith(expect.objectContaining({ model: expect.objectContaining({ modelId: "gemini-test-model", provider: "google.generative-ai" }) }));
+  });
+
+  it("returns editable photo suggestions from image input", async () => {
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", "test-only-key");
+    const output = { title: "Handled vessel", material: "Possibly glazed ceramic", observed: "A pale vessel with a curved handle and a dark opening.", alt: "A pale vessel with a curved handle" };
+    mocks.generate.mockResolvedValue({ output });
+    const image = new Uint8Array([1, 2, 3]);
+    await expect(describePhoto(image, new AbortController().signal)).resolves.toEqual(output);
+    expect(mocks.generate.mock.calls[0][0].messages[0].content[1]).toEqual({ type: "image", image, mediaType: "image/webp" });
+  });
+
+  it("includes the saved photo when drafting a fictional interpretation", async () => {
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", "test-only-key");
+    mocks.generate.mockResolvedValue({ output: { label: "A small vessel for an imagined morning ritual.", interpretation: "Speculative fiction: perhaps this vessel preserved a moment of calm.", strangeness: 3 } });
+    const artifact = { ...seedArtifacts[0], kind: "photo" as const, photo: { url: "https://cdn.sanity.io/images/project/production/example-20x20.webp", alt: "A pale vessel" } };
+    await prepareDraft(artifact, new AbortController().signal);
+    expect(mocks.generate.mock.calls[0][0].messages[0].content[1]).toEqual({ type: "image", image: artifact.photo.url });
   });
 
   it("does not substitute a sample when the provider fails", async () => {

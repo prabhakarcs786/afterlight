@@ -20,7 +20,7 @@ export const seedArtifacts: Artifact[] = records.map((record, index) => artifact
 export function prepareLocalDraft(artifact: Artifact): Draft {
   return {
     label: `An object called "${artifact.title.toLowerCase()}". Its ${artifact.material.toLowerCase()} survived, while the ordinary moment around it disappeared.`,
-    interpretation: `Fictional research note: perhaps this ${artifact.kind} was a device for preserving a small daily ritual. The observable record says: ${artifact.observed} The rest is an imaginative reconstruction, not evidence of its original purpose.`,
+    interpretation: `Fictional research note: perhaps this ${artifact.kind === "photo" ? "object" : artifact.kind} was a device for preserving a small daily ritual. The observable record says: ${artifact.observed} The rest is an imaginative reconstruction, not evidence of its original purpose.`,
     strangeness: 3,
   };
 }

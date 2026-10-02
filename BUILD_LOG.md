@@ -51,7 +51,7 @@ The project now has a secret-safe configuration doctor, an interactive setup wiz
 
 Latest local regression: 42 unit/integration cases and 8 browser cases pass, with type-checking, lint, and production build also passing. The wizard passed shell syntax and structural checks; it was not run through account login or secret entry. These results are not cloud-connectivity evidence.
 
-## Still Needs the Entrant
+## Earlier Handoff Checklist (superseded by the release verification below)
 
 - Create the real Sanity project/dataset and configure private credentials.
 - Seed and run a live write, then confirm the changed document and revision in Studio.
@@ -61,3 +61,15 @@ Latest local regression: 42 unit/integration cases and 8 browser cases pass, wit
 - Capture the final live screenshots and publish the separate Path Two DEV post before the deadline.
 
 When publishing an agent session, inspect it for API keys, application access codes, personal data, private paths, and unrelated context. Only publish with the user's approval.
+
+## Hosted Release Verification — 2 October 2026
+
+The current release completes the earlier live-setup handoff. Sanity project `solj2ppn` and the hosted application at https://afterlight-beige.vercel.app were exercised with real Sanity and Gemini. Codex performed this release review and prepared the narrated walkthrough; the earlier entries remain a dated account of the initial Copilot build.
+
+- 57 unit tests and 12 desktop/mobile browser tests passed, with lint, TypeScript, production build, schema extraction, and production dependency audit checks.
+- The photo workflow passed locally and on Vercel, covering consent, suggestions, sanitised asset upload, model drafting, revision conflicts, review, approval, withdrawal, and scoped cleanup.
+- Separate browser sessions observed Sanity change events and visitor-gallery updates. A stale curator session retained unsaved input and disabled outdated writes.
+- The thumbnail renderer now exports canvas pixels directly, avoiding the development badge captured by element screenshots.
+- The 1080p narrated recording and screenshots show the hosted workflow with a temporary sample-image exhibit. Authentication and waiting time are edited out; model responses and transitions were real.
+
+See [the release record](docs/RELEASE_READINESS.md) for scope and limits. Remaining submission work is the author's DEV publication and curator-access handoff, not the earlier missing cloud setup.

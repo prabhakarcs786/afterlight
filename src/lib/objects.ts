@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-import { type Artifact } from "./domain";
+import { type ObjectKind } from "./domain";
 
 const material = (color: string, metalness = 0, roughness = 0.48) => new THREE.MeshStandardMaterial({ color, metalness, roughness });
 
@@ -25,7 +25,7 @@ function faceText(lines: string[], background: string, foreground: string): THRE
   return new THREE.MeshStandardMaterial({ map: texture, roughness: .7 });
 }
 
-export function createObject(kind: Artifact["kind"]): THREE.Group {
+export function createObject(kind: ObjectKind): THREE.Group {
   const group = new THREE.Group();
   const charcoal = material("#263330");
   const silver = material("#bcc8cb", .72, .25);

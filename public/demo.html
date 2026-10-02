@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watch Afterlight — a museum from 2126</title>
+<meta name="description" content="A narrated walkthrough of Afterlight: image intake, reviewed AI suggestions, human approval, public exhibits, and Sanity workflow history.">
+<meta property="og:title" content="Afterlight — Small things. Long afterlives."><meta property="og:image" content="https://afterlight-beige.vercel.app/demo/cover.png"><meta property="og:type" content="website"><link rel="icon" href="/icon"><style>
+    :root { color-scheme: light; font-family: Arial, sans-serif; color: #233f35; background: #f8faf6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; line-height: 1.6; }
+    main { max-width: 1120px; margin: auto; padding: 32px 24px 64px; }
+    a { color: #245b48; text-underline-offset: 4px; }
+    a:focus-visible, summary:focus-visible { outline: 3px solid #a83d2c; outline-offset: 5px; }
+    nav { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; margin-bottom: 44px; }
+    .brand { font-size: 26px; font-weight: 700; text-decoration: none; }
+    .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { font: 700 clamp(34px, 5vw, 58px)/1.15 Georgia, serif; margin: 12px 0; }
+    h2 { font: 700 30px/1.25 Georgia, serif; margin-top: 36px; }
+    .intro { max-width: 780px; color: #53645b; }
+    video { display: block; width: 100%; aspect-ratio: 16/9; background: #233f35; border-radius: 8px; margin-top: 25px; }
+    .links { display: flex; flex-wrap: wrap; gap: 12px 24px; padding: 18px 0; }
+    .note { color: #53645b; font-size: 14px; max-width: 920px; }
+    .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
+    figure { margin: 0; }
+    figure img { display: block; width: 100%; height: auto; border: 1px solid #ced8cc; border-radius: 5px; }
+    figcaption { font-size: 14px; margin-top: 10px; }
+    details { margin-top: 30px; padding: 17px 0; border-block: 1px solid #ced8cc; }
+    summary { cursor: pointer; font-weight: 700; min-height: 32px; }
+    details p { max-width: 880px; }
+    footer { margin-top: 34px; font-size: 13px; color: #53645b; }
+    @media (max-width: 650px) { main { padding: 22px 18px 44px; } nav { margin-bottom: 28px; } .gallery { grid-template-columns: 1fr; } }
+  </style></head><body><main>
+<nav aria-label="Demo navigation"><a class="brand" href="/">afterlight</a><a href="/">Explore the collection →</a></nav>
+<header><span class="eyebrow">Sanity Challenge / Path Two</span><h1>Small things. Long afterlives.</h1><p class="intro">A museum from 2126. Everyday objects, imagined stories, and a curator's final say. See an image become an exhibit through a real Sanity-backed workflow.</p><p class="eyebrow">About 1 minute 38 seconds · 1080p · English neural narration · Captions</p></header>
+<video controls playsinline preload="metadata" poster="/demo/cover.png" aria-label="Afterlight narrated demonstration"><source src="/demo/afterlight-demo.mp4" type="video/mp4"><track kind="captions" src="/demo/captions.vtt" srclang="en" label="English">Your browser cannot play this video. <a href="/demo/afterlight-demo.mp4">Download the MP4</a> or <a href="/demo/narration.txt">read the transcript</a>.</video>
+<div class="links"><a href="/demo/afterlight-demo.mp4" download>Download video</a><a href="/demo/narration.txt">Read transcript</a><a href="/demo/captions.srt" download>Download captions</a><a href="/demo/screenshots.zip" download>Download screenshots</a></div>
+<p class="note">Captured from the deployed app on 2 October 2026 using real Sanity and Gemini. The upload example is a render of an original cup model, not a personal photograph. Authentication and provider waits are edited out. The temporary exhibit was withdrawn and removed after capture. Narration uses a synthetic Microsoft Ava voice.</p>
+<h2>Three moments to look for</h2><div class="gallery"><figure><a href="/demo/screenshots/04-ai-suggestions.png"><img src="/demo/screenshots/04-ai-suggestions.png" width="1600" height="810" loading="lazy" alt="Gemini suggestions remain unverified until the curator chooses to use them."></a><figcaption><strong>Review before accepting.</strong> Gemini suggestions remain unverified until the curator chooses to use them.</figcaption></figure><figure><a href="/demo/screenshots/06-human-review.png"><img src="/demo/screenshots/06-human-review.png" width="1600" height="810" loading="lazy" alt="Approval is a separate action after the draft has been submitted for review."></a><figcaption><strong>A human final say.</strong> Approval is a separate action after the draft has been submitted for review.</figcaption></figure><figure><a href="/demo/screenshots/08-workflow-history.png"><img src="/demo/screenshots/08-workflow-history.png" width="1440" height="338" loading="lazy" alt="Visitors can inspect the retained intake, drafting, review, and approval events."></a><figcaption><strong>Decisions stay with the object.</strong> Visitors can inspect the retained intake, drafting, review, and approval events.</figcaption></figure></div>
+<div class="links"><a href="/demo/screenshots/01-collection.png">The collection</a><a href="/demo/screenshots/02-object-inspection.png">Inspect an original 3D object</a><a href="/demo/screenshots/07-approved-exhibit.png">The approved exhibit</a></div>
+<details><summary>How judges can try it</summary><p>Browse the <a href="/">public collection</a> without signing in. Open the curator desk with the separate application-only curator code supplied privately by the author to try image intake, AI drafting, review, approval, and withdrawal. The curator code permits content changes and is separate from provider and Sanity credentials.</p><p><a href="https://github.com/prabhakarcs786/afterlight">Review the public source on GitHub</a>.</p></details>
+<footer>Afterlight · Sanity Content Lake · Original objects, fictional stories, human approval</footer>
+</main></body></html>
