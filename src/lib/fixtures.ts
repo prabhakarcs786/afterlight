@@ -1,0 +1,26 @@
+import { artifactSchema, type Artifact, type Draft } from "./domain";
+
+const reviewedAt = "2026-09-30T12:00:00.000Z";
+const records = [
+  { title: "A pocket-sized time machine", kind: "cassette", collectionId: "collection-signals", material: "Plastic, magnetic tape, two turning spools", observed: "A small rectangular case contains two reels joined by a strip of dark tape. The label is blank.", interpretation: "Perhaps these were portable rooms. A person could wind one backward, step inside a familiar voice, and stay there until the tape ran out.", label: "An entire afternoon, wound around two small circles. Handle gently: the silence between songs may still be intact.", strangeness: 4, stage: "exhibited" },
+  { title: "Permission to come home", kind: "key", collectionId: "collection-rituals", material: "Brass with a worn, notched edge", observed: "One end has an oval opening. The narrow blade carries a sequence of asymmetric teeth.", interpretation: "A tiny map of a single threshold. Its owner carried the shape of home in a pocket, though the place itself could never fit.", label: "A brass promise that one particular door would recognize you. The door has not been recovered.", strangeness: 3, stage: "exhibited" },
+  { title: "One point four four", kind: "disk", collectionId: "collection-signals", material: "Molded plastic, metal shutter, magnetic film", observed: "A square black shell encloses a circular disk. A spring-loaded silver shutter covers a small window.", interpretation: "A ration of memory. People once decided which thoughts deserved to cross the room by measuring whether they would fit inside this square.", label: "A small, strict container for a very large idea. The number on the label outlived the machine that understood it.", strangeness: 5, stage: "exhibited" },
+  { title: "A borrowed sunrise", kind: "bulb", collectionId: "collection-energy", material: "Glass, tungsten filament, threaded metal base", observed: "A clear glass envelope contains a fine coil supported by two wires. The base has a screw thread.", interpretation: "The first domestic star: switched on at will, trusted to hold back the evening, and replaced without a funeral when it stopped.", label: "A little daylight for a room without a window. Its filament remembers the shape of being warm.", strangeness: 4, stage: "exhibited" },
+  { title: "The ritual of waiting", kind: "phone", collectionId: "collection-signals", material: "Black plastic, glass screen, metal contacts", observed: "A palm-sized rectangle has a dark glass face and one circular button. There are no visible moving parts.", interpretation: "A mirror that rarely showed its owner. Our fictional researchers suspect it was consulted whenever a person was briefly alone.", label: "A quiet object that once interrupted everything. The most frequently touched surface of an otherwise ordinary day.", strangeness: 4, stage: "review" },
+  { title: "A circle of almost-music", kind: "disc", collectionId: "collection-signals", material: "Reflective polycarbonate with a central opening", observed: "A thin silver disk reflects shifting colors. A circular hole sits exactly at its center.", interpretation: "A flat instrument played without touching its face. The surface seems to hold a rainbow hostage until the correct light arrives.", label: "A mirror that preferred to sing. No performer has been found small enough to live inside it.", strangeness: 5, stage: "draft" },
+  { title: "The handle remembers", kind: "cup", collectionId: "collection-rituals", material: "Glazed ceramic", observed: "A hollow ceramic cylinder has a rounded base and a loop-shaped handle attached to one side.", interpretation: "", label: "", strangeness: 3, stage: "intake" },
+  { title: "Two ends of a small storm", kind: "battery", collectionId: "collection-energy", material: "Metal canister, printed wrapper, two terminals", observed: "A short cylinder has a flat terminal at one end and a raised terminal at the other. The wrapper has faded.", interpretation: "", label: "", strangeness: 3, stage: "intake" },
+] as const;
+
+export const seedArtifacts: Artifact[] = records.map((record, index) => artifactSchema.parse({
+  ...record, _id: `artifact-${record.kind}`, _rev: `seed-${record.kind}`, _updatedAt: reviewedAt, accession: `AL-${String(index + 1).padStart(3, "0")}`,
+  history: [{ _key: `seed-${record.kind}`, action: "intake", actor: "curator", from: "intake", to: record.stage, at: reviewedAt, note: "Curated fictional demonstration record. This is a seed snapshot, not a recorded live approval." }],
+}));
+
+export function prepareLocalDraft(artifact: Artifact): Draft {
+  return {
+    label: `An object called "${artifact.title.toLowerCase()}". Its ${artifact.material.toLowerCase()} survived, while the ordinary moment around it disappeared.`,
+    interpretation: `Fictional research note: perhaps this ${artifact.kind} was a device for preserving a small daily ritual. The observable record says: ${artifact.observed} The rest is an imaginative reconstruction, not evidence of its original purpose.`,
+    strangeness: 3,
+  };
+}

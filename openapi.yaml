@@ -1,0 +1,183 @@
+openapi: 3.1.0
+info:
+  title: Afterlight Archive API
+  version: 1.0.0
+  description: Application-owned fictional museum workflow. Live mutations require a curator code and revision precondition. Demo mutations remain in browser storage.
+paths:
+  /api/artifacts:
+    get:
+      operationId: listArtifacts
+      summary: Read the public collection or authenticated curator catalog
+      security:
+        - CuratorCode: []
+        - {}
+      parameters:
+        - in: query
+          name: view
+          schema: { type: string, enum: [public, curator], default: public }
+          description: Curator view requires x-curator-code in live mode. Public view returns only exhibited objects. Maximum 100 records.
+      responses:
+        '200':
+          description: Published or curator-visible archive records
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [mode, artifacts]
+                properties:
+                  mode: { type: string, enum: [demo, live] }
+                  artifacts: { type: array, items: { $ref: '#/components/schemas/Artifact' } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '502': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createArtifact
+      summary: Enter an object into intake
+      security: [{ CuratorCode: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Intake' }
+      responses:
+        '201':
+          description: Object created in intake, with server-generated ID and revision
+          content:
+            application/json:
+              schema: { type: object, properties: { artifact: { $ref: '#/components/schemas/Artifact' } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+        '502': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+  /api/artifacts/{id}:
+    patch:
+      operationId: transitionArtifact
+      summary: Apply a revision-guarded workflow action
+      security: [{ CuratorCode: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, pattern: '^artifact-[a-z0-9-]+$', maxLength: 100 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [action, expectedRevision]
+                  properties:
+                    action: { type: string, enum: [prepare, submit, approve] }
+                    expectedRevision: { type: string, minLength: 1, maxLength: 200 }
+                - type: object
+                  required: [action, expectedRevision, draft]
+                  properties:
+                    action: { const: save }
+                    expectedRevision: { type: string, minLength: 1, maxLength: 200 }
+                    draft: { $ref: '#/components/schemas/Draft' }
+                - type: object
+                  required: [action, expectedRevision, note]
+                  properties:
+                    action: { const: revise }
+                    expectedRevision: { type: string, minLength: 1, maxLength: 200 }
+                    note: { type: string, minLength: 5, maxLength: 500 }
+      responses:
+        '200':
+          description: Updated object with the new Sanity revision
+          content:
+            application/json:
+              schema: { type: object, properties: { artifact: { $ref: '#/components/schemas/Artifact' } } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+        '502': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+  /api/events:
+    get:
+      operationId: observeArchive
+      summary: Subscribe to content-change signals, without document payloads
+      responses:
+        '200':
+          description: SSE events ready, change, and unavailable. Reconnect after the 50-second stream lifetime. Changes require a separate authorized fetch.
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '204': { description: Event streaming is unused in local demo mode. }
+        '403': { $ref: '#/components/responses/Problem' }
+        '502': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    CuratorCode:
+      type: apiKey
+      in: header
+      name: x-curator-code
+      description: Shared app-only curator code, not a Sanity API token. Required for live curator reads and writes.
+  schemas:
+    Intake:
+      type: object
+      required: [title, kind, collectionId, material, observed]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 90 }
+        kind: { type: string, enum: [cassette, key, disk, bulb, phone, cup, disc, battery] }
+        collectionId: { type: string, enum: [collection-signals, collection-rituals, collection-energy] }
+        material: { type: string, minLength: 2, maxLength: 100 }
+        observed: { type: string, minLength: 10, maxLength: 1000 }
+    Draft:
+      type: object
+      required: [label, interpretation, strangeness]
+      properties:
+        label: { type: string, maxLength: 500 }
+        interpretation: { type: string, maxLength: 1200 }
+        strangeness: { type: integer, minimum: 1, maximum: 5 }
+    Artifact:
+      allOf:
+        - $ref: '#/components/schemas/Intake'
+        - $ref: '#/components/schemas/Draft'
+        - type: object
+          required: [_id, _rev, _updatedAt, accession, stage, history]
+          properties:
+            _id: { type: string }
+            _rev: { type: string }
+            _updatedAt: { type: string, format: date-time }
+            accession: { type: string }
+            stage: { type: string, enum: [intake, draft, review, exhibited] }
+            history:
+              type: array
+              maxItems: 100
+              items:
+                type: object
+                required: [_key, action, actor, from, to, at, note]
+                properties:
+                  _key: { type: string }
+                  action: { type: string, enum: [intake, prepare, save, submit, approve, revise] }
+                  actor: { type: string, enum: [automation, curator] }
+                  from: { type: string, enum: [intake, draft, review, exhibited] }
+                  to: { type: string, enum: [intake, draft, review, exhibited] }
+                  at: { type: string, format: date-time }
+                  note: { type: string, maxLength: 500 }
+  responses:
+    Problem:
+      description: Validation, workflow, configuration, authorization, budget, or upstream failure; no silent local-data fallback.
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            required: [type, title, status, code]
+            properties:
+              type: { type: string }
+              title: { type: string }
+              status: { type: integer }
+              code: { type: string }
